@@ -3,8 +3,15 @@
 
     ui <- fluidPage(
 
+    titlePanel("ChipSeq peak overlap test"),
+    
+      sidebarLayout(
+        
+        sidebarPanel(
+          helpText("Peak overlap test"),
+          
       sliderInput("obs", "total number of peaks",
-                  min = 3000, max = 40000, value = 35000
+                  min = 3000, max = 40000, value = 32044
       ),
 
        sliderInput("x", "RAD21_x",
@@ -32,19 +39,58 @@
       ),
 
       sliderInput("y3", "SMC1A_y",
-                  min = -120, max = 120, value = -100
+                  min = -120, max = 120, value = -100)
       ),
-
       mainPanel(
+        textOutput("text1"),
         plotOutput("distPlot")
     )
-
-
-    )
-
+))
     # Server logic
     server <- function(input, output) {
-      output$distPlot <- renderPlot({
+  
+      pvalue<-reactive({
+        
+        BB=c(1:6153,6154:25736)
+        
+        CC=c(6154:25736,25737:29579)
+        
+        AA=c(6026:6153,6154:8462,25737:25776,29650:29719)
+        
+        Vstem <- Venn(list(ASXL1=AA,SMC1A=BB,RAD21=CC))
+        
+        #SetLabels <- VennGetSetLabels(Vstem)
+        
+        Cstem3 <- compute.Venn(Vstem,doWeights=TRUE)  
+        
+        a=Cstem3@IndicatorWeight[,4][8]+Cstem3@IndicatorWeight[,4][7]
+        b=Cstem3@IndicatorWeight[,4][3]
+        c=Cstem3@IndicatorWeight[,4][5]
+        d=input$obs-(a+b+c)
+        
+        
+        ctb<-matrix(c(a,b,c,d),nrow = 2,dimnames =list(c("In", "Out"),c("In", "Out")))
+        print(ctb)
+        
+        if(d>0){
+        re<-fisher.test(ctb, alternative='greater')[c("p.value","estimate")]
+        re<-re$p.value
+        }else
+        {
+        re="Total number of peaks is too small"  
+        }
+        
+        return(re)
+        
+      }
+      )
+      
+      output$text1 <- renderText({
+       #cat("Fisher exact test:\n") 
+       paste("Fisher exact test","\n",pvalue()) 
+      })
+      
+        output$distPlot <- renderPlot({
 
         BB=c(1:6153,6154:25736)
 
@@ -92,6 +138,26 @@
         #
          c.3.set=sum(Cstem3@IndicatorWeight[,4])
          Cstem3@IndicatorWeight[which(row.names(Cstem3@IndicatorWeight)=="000"),4]=input$obs-c.3.set
+         
+         #print(Cstem3@IndicatorWeight[,4])
+         #print(Cstem3@IndicatorWeight[,4][8])
+         #print(input$obs)
+         
+         a=Cstem3@IndicatorWeight[,4][8]+Cstem3@IndicatorWeight[,4][7]
+         b=Cstem3@IndicatorWeight[,4][3]
+         c=Cstem3@IndicatorWeight[,4][5]
+         d=input$obs-(a+b+c)
+         
+         ctb<-matrix(c(a,b,c,d),nrow = 2,dimnames =list(c("In", "Out"),c("In", "Out")))
+         
+         #re<-fisher.test(ctb)
+         #ctb3
+         #fisher.test(ctb2, alternative='greater')[c("p.value","estimate")]
+         
+         re<-fisher.test(ctb, alternative='greater')[c("p.value","estimate")]
+         
+         print(re)
+         
         #
         # Cstem3@FaceLabels[which(Cstem3@FaceLabels$FaceName=="DarkMatter"),]$y<--130
         #
@@ -119,67 +185,11 @@
         #grid.newpage()
 
         plot(Cstem3)
-
-
-
-
+        #grid.text("test",-80,58)
 
         #hist(rnorm(input$obs))
       })
     }
 
-    # Complete app with UI and server components
+    # Run the application
     shinyApp(ui, server)
-
-
-
-
-  #
-  # This is a Shiny web application. You can run the application by clicking
-  # the 'Run App' button above.
-  #
-  # Find out more about building applications with Shiny here:
-  #
-  #    http://shiny.rstudio.com/
-  #
-
-
-
-  # # Define UI for application that draws a histogram
-  # ui <- shinyUI(fluidPage(
-  #
-  #    # Application title
-  #    titlePanel("Draw venn"),
-  #
-  #    # Sidebar with a slider input for number of bins
-  #    sidebarLayout(
-  #       sidebarPanel(
-  #          sliderInput("bins",
-  #                      "Number of bins:",
-  #                      min = 1,
-  #                      max = 50,
-  #                      value = 30)
-  #       ),
-  #
-  #       # Show a plot of the generated distribution
-  #       mainPanel(
-  #          plotOutput("distPlot")
-  #       )
-  #    )
-  # ))
-  #
-  # # Define server logic required to draw a histogram
-  # server <- shinyServer(function(input, output) {
-  #
-  #    output$distPlot <- renderPlot({
-  #       # generate bins based on input$bins from ui.R
-  #       x    <- faithful[, 2]
-  #       bins <- seq(min(x), max(x), length.out = input$bins + 1)
-  #
-  #       # draw the histogram with the specified number of bins
-  #       hist(x, breaks = bins, col = 'darkgray', border = 'white')
-  #    })
-  # })
-  #
-  # # Run the application
-  # shinyApp(ui = ui, server = server)
